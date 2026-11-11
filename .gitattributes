@@ -1,0 +1,4 @@
+# Скрипты для macOS/Linux (сборка iOS в GitHub Actions) — всегда с LF, иначе bash падает
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.png  binary

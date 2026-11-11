@@ -1,0 +1,12 @@
+{
+  "appId": "pro.grumgrade.app",
+  "appName": "GRUMGrade",
+  "webDir": "www",
+  "backgroundColor": "#111217",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#111217",
+    "scrollEnabled": true,
+    "allowsLinkPreview": false
+  }
+}

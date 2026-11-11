@@ -1,0 +1,16 @@
+{
+  "name": "grumgrade-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GRUMGrade — iOS-приложение (Capacitor). Сборка .ipa идёт в GitHub Actions на macOS.",
+  "scripts": {
+    "build": "node build-www.js",
+    "ios:add": "npx cap add ios",
+    "ios:sync": "node build-www.js && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  }
+}

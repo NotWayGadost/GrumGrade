@@ -1,0 +1,66 @@
+# Сборка iOS-приложения GRUMGrade (.ipa) на Mac-сервере GitHub.
+# Запуск: вкладка Actions → «iOS-приложение» → Run workflow. Готовый файл — в Artifacts внизу страницы запуска.
+# Файл .ipa без подписи: на iPhone его ставят через Sideloadly (подписывает твоим Apple ID).
+name: iOS-приложение
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['public/**', 'data/items.json', 'server/catalog.js', 'mobile/**', '.github/workflows/ios.yml']
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Установить Capacitor
+        working-directory: mobile
+        run: npm ci
+
+      - name: Кэш картинок скинов
+        uses: actions/cache@v4
+        with:
+          path: mobile/.cache
+          key: grum-assets-${{ hashFiles('data/items.json') }}
+          restore-keys: grum-assets-
+
+      - name: Собрать приложение (файлы, каталог, картинки, шрифт)
+        working-directory: mobile
+        run: node build-www.js
+
+      - name: Создать и настроить iOS-проект
+        working-directory: mobile
+        run: |
+          npx cap add ios
+          bash ios-setup.sh
+          npx cap sync ios
+
+      - name: Собрать .ipa
+        working-directory: mobile/ios/App
+        run: |
+          set -o pipefail
+          if [ -d App.xcworkspace ]; then SRC="-workspace App.xcworkspace"; else SRC="-project App.xcodeproj"; fi
+          xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            MARKETING_VERSION=1.0 CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive | tail -n 40
+          mkdir -p Payload
+          cp -R "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" Payload/
+          zip -qry "GRUMGrade-1.0.${{ github.run_number }}.ipa" Payload
+          ls -lh *.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GRUMGrade-ipa
+          path: mobile/ios/App/*.ipa
+          retention-days: 30

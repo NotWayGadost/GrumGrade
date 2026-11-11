@@ -1,0 +1,14 @@
+{
+  "name": "grumgrade",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GRUMGrade — апгрейдер и кейсы CS2",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "dev": "node --watch --env-file-if-exists=.env server/index.js",
+    "prices": "node --env-file-if-exists=.env scripts/update-prices.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

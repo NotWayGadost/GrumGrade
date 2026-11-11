@@ -1,0 +1,7 @@
+{
+  "telegram": "https://t.me/FuckedBypass",
+  "startBalance": 1000,
+  "bonus": { "min": 5, "max": 50, "hours": 24 },
+  "upgradeEdge": 0.10,
+  "upgradeMax": 0.75
+}

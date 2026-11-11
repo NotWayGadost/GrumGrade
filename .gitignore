@@ -1,0 +1,8 @@
+.env
+data/grumgrade.db*
+node_modules/
+mobile/node_modules/
+mobile/www/
+mobile/ios/
+mobile/.cache/
+*.tmp
