@@ -14,7 +14,9 @@ const PUB = path.join(ROOT, 'public');
 const WWW = path.join(__dirname, 'www');
 const CACHE = path.join(__dirname, '.cache');
 const CFG = JSON.parse(fs.readFileSync(path.join(__dirname, 'app.config.json'), 'utf8'));
-const SKIP = new Set(['admin.html', 'sw.js', 'splash-2732.png']);
+const SKIP = new Set(['admin.html', 'sw.js', 'splash-2732.png', 'icon-1024.png']);
+// --web: сборка для GitHub Pages (ставится на iPhone через «На экран Домой», работает офлайн)
+const WEB = process.argv.includes('--web');
 
 const { ITEMS, CASES, meta } = require(path.join(ROOT, 'server', 'catalog.js'));
 
@@ -101,13 +103,40 @@ async function fonts(html) {
   };
   let html = fs.readFileSync(path.join(WWW, 'index.html'), 'utf8');
   html = await fonts(html);
-  html = html.replace(/<link rel="manifest"[^>]*>\s*/, '');
-  html = html.replace('<script src="/app.js"></script>', `<script>window.GRUM_NATIVE=${JSON.stringify(native)}</script>\n<script src="app.js"></script>`);
+  if (WEB) native.web = true;
+  // относительные пути: приложение должно работать и из capacitor://localhost/, и из подпапки GitHub Pages (/GrumGrade/)
+  html = html.replace(/(href|src)="\/(?!\/)/g, '$1="');
+  if (!WEB) html = html.replace(/<link rel="manifest"[^>]*>\s*/, '');
+  html = html.replace('<script src="app.js"></script>', `<script>window.GRUM_NATIVE=${JSON.stringify(native)}</script>\n<script src="app.js"></script>`);
   if (!html.includes('GRUM_NATIVE')) throw new Error('Не нашёл <script src="/app.js"> в index.html');
   fs.writeFileSync(path.join(WWW, 'index.html'), html);
+
+  if (WEB) {
+    // manifest с относительными путями
+    const man = JSON.parse(fs.readFileSync(path.join(WWW, 'manifest.webmanifest'), 'utf8'));
+    man.start_url = './#upgrade'; man.scope = './';
+    man.icons = man.icons.map(i => ({ ...i, src: i.src.replace(/^\//, '') }));
+    fs.writeFileSync(path.join(WWW, 'manifest.webmanifest'), JSON.stringify(man, null, 2));
+    // service worker: заранее кладёт в телефон ВСЕ файлы — после первого открытия работает без интернета
+    const files = listFiles(WWW).filter(f => f !== 'sw.js');
+    const ver = crypto.createHash('sha1').update(files.map(f => f + fs.statSync(path.join(WWW, f)).size).join('|') + fs.readFileSync(path.join(WWW, 'app.js'))).digest('hex').slice(0, 10);
+    fs.writeFileSync(path.join(WWW, 'sw.js'), `'use strict';
+// Сгенерировано build-www.js. Всё приложение хранится в телефоне — работает без интернета.
+const V='grum-app-${ver}';
+const FILES=${JSON.stringify(['./', ...files])};
+const abs=f=>new URL(f,self.registration.scope).href;
+self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(FILES.map(abs))).then(()=>self.skipWaiting())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET'||new URL(r.url).origin!==location.origin)return;
+  e.respondWith(caches.open(V).then(async c=>{const hit=await c.match(r.mode==='navigate'?abs('./'):r,{ignoreSearch:true});if(hit)return hit;
+    try{const res=await fetch(r);if(res.ok)c.put(r,res.clone());return res}catch(err){return (await c.match(abs('./')))||Response.error()}}))});
+`);
+    console.log(`Офлайн-кэш (Pages): ${files.length} файлов, версия ${ver}`);
+  }
 
   const size = dirSize(WWW);
   console.log(`Готово: mobile/www (${(size / 1048576).toFixed(1)} МБ), предметов ${items.length}, кейсов ${CASES.length}`);
 })().catch(e => { console.error('Ошибка сборки:', e); process.exit(1); });
 
+function listFiles(d, base = d) { let out = []; for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); out = out.concat(f.isDirectory() ? listFiles(p, base) : [path.relative(base, p).split(path.sep).join('/')]); } return out; }
 function dirSize(d) { let s = 0; for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); s += f.isDirectory() ? dirSize(p) : fs.statSync(p).size; } return s; }

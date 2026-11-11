@@ -13,6 +13,7 @@ try{Object.assign(P,JSON.parse(localStorage.getItem('grum_prefs'))||{})}catch(e)
 const savePrefs=()=>{try{localStorage.setItem('grum_prefs',JSON.stringify(P))}catch(e){}};
 // Нативное iOS-приложение (Capacitor): всё внутри, сервер не нужен → всегда офлайн
 const NATIVE=window.GRUM_NATIVE||null;
+const APPSHELL=!NATIVE||NATIVE.web; // сайт или сборка для GitHub Pages: ставится через «На экран Домой»
 if(NATIVE)P.mode='offline';
 const OFFLINE=()=>P.mode==='offline';
 const imgSrc=(it,s=256)=>it.local?it.img:`${it.img}/${s}fx${s}f`;
@@ -219,7 +220,7 @@ async function openProfile(){
     <button data-m="snd">${ICON.snd}Звук ${sw(P.sound)}</button>
     <button data-m="fast">${ICON.bolt}Быстрый режим ${sw(P.fast)}</button>
     ${CFG.telegram?`<a href="${esc(CFG.telegram)}" target="_blank" rel="noopener">${ICON.tg}Наш Telegram</a>`:''}
-    ${isIOS&&!standalone()&&!NATIVE?`<button data-m="install">${ICON.phone}Установить на iPhone</button>`:''}
+    ${isIOS&&!standalone()&&APPSHELL?`<button data-m="install">${ICON.phone}Установить на iPhone</button>`:''}
     ${OFFLINE()?`<button data-m="reset">${ICON.trash}Сбросить офлайн-прогресс</button>`:''}
     ${ME&&!OFFLINE()?`<button data-logout>${ICON.out}Выйти</button>`:''}
     ${OFFLINE()?'':`<a href="/admin">${ICON.key}Админ-панель</a>`}
@@ -413,10 +414,10 @@ $('#fairBtn').onclick=openFair;
 /* ---------- установка на iPhone ---------- */
 const standalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
 function showInstall(force){const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- if(standalone()||NATIVE)return;if(force){closeModal();$('#install').classList.add('on');return}
+ if(standalone()||!APPSHELL)return;if(force){closeModal();$('#install').classList.add('on');return}
  if(isIOS&&!P.installHidden)setTimeout(()=>$('#install').classList.add('on'),2500)}
 $('#installX').onclick=()=>{$('#install').classList.remove('on');P.installHidden=true;savePrefs()};
-if('serviceWorker' in navigator&&!NATIVE)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&APPSHELL)addEventListener('load',()=>navigator.serviceWorker.register(NATIVE?'sw.js':'/sw.js').catch(()=>{}));
 
 /* ---------- конфетти ---------- */
 const cv=document.createElement('canvas');cv.id='confetti';document.body.appendChild(cv);const cx2=cv.getContext('2d');let parts=[],raf=0;

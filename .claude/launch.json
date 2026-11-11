@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "3100", "--directory", "mobile/www"],
       "port": 3100
+    },
+    {
+      "name": "grumgrade-pages",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3101", "--directory", "mobile"],
+      "port": 3101
     }
   ]
 }
